@@ -22,7 +22,7 @@ func main() {
 		log.Print("Connected to Postgres")
 	}
 
-	defer db.Close(ctx)
+	defer db.Close()
 
 	server := mux.NewRouter()
 
@@ -30,6 +30,8 @@ func main() {
 
 	server.HandleFunc("/login", userHandler.HandleUserLogin).Methods("POST", "OPTIONS")
 	server.HandleFunc("/signup", userHandler.HandleUserSignUp).Methods("POST", "OPTIONS")
+	server.HandleFunc("/contactsbyid", userHandler.HandleContacts).Methods("GET", "OPTIONS")
+	server.HandleFunc("/pushCallNotification", userHandler.HandlePushNotification).Methods("GET", "POST", "OPTIONS")
 
 	log.Printf("Server listening on %s", cfg.ServerUrl)
 	if err := http.ListenAndServe(cfg.ServerUrl, server); err != nil {

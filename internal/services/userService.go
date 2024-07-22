@@ -1,21 +1,34 @@
 package services
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
+	"net/http"
+	"strconv"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shandilya01/VoipalGo/internal/models"
 	"github.com/shandilya01/VoipalGo/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UserService struct {
-	db *pgx.Conn
+const expoPushURL = "https://exp.host/--/api/v2/push/send" //"https://api.expo.dev/v2/push/send"
+
+type ExpoPushMessage struct {
+	To        string `json:"to"`
+	Title     string `json:"title"`
+	Body      string `json:"body"`
+	ChannelID string `json:"channelId,omitempty"`
 }
 
-func NewUserService(db *pgx.Conn) *UserService {
+type UserService struct {
+	db *pgxpool.Pool
+}
+
+func NewUserService(db *pgxpool.Pool) *UserService {
 	return &UserService{db: db}
 }
 
@@ -91,4 +104,71 @@ func (s *UserService) UserSignUp(ctx context.Context, reqBody map[string]interfa
 	}
 
 	return userObj, nil
+}
+
+func (s *UserService) GetUserContactsById(ctx context.Context, id string) ([]*models.Contact, error) {
+	repo := repository.NewUserRepository(s.db)
+
+	var contactsArr []*models.Contact
+	if id != "" {
+		contactsArr = repo.GetContactsById(ctx, id)
+	}
+
+	return contactsArr, nil
+}
+
+func (s *UserService) CallPushNotification(ctx context.Context, userId string, peerId string) error {
+	repo := repository.NewUserRepository(s.db)
+
+	peerToken := repo.GetPushToken(ctx, peerId)
+
+	if len(*peerToken) == 0 {
+		return errors.New("could not get push token")
+	}
+
+	title := "Incoming Call"
+	body := "Incoming Call From User Id : " + userId
+	// data := "incoming"
+	return SendPushNotfication(*peerToken, title, body, "voipalCall")
+	// return SendPushNotfication(peerToken, &title, &body, &data)
+}
+
+func SendPushNotfication(token, title, body, channelId string) error {
+	message := []ExpoPushMessage{
+		{
+			To:        token,
+			Title:     title,
+			Body:      body,
+			ChannelID: channelId,
+		},
+	}
+
+	payload, err := json.Marshal(message)
+	if err != nil {
+		return errors.New("failed to marshal message")
+	}
+
+	req, err := http.NewRequest("POST", expoPushURL, bytes.NewBuffer(payload))
+	if err != nil {
+		return errors.New("failed to create request")
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
+	req.Header.Set("Accept-Encoding", "gzip, deflate, br, zstd")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Sec-Fetch-Mode", "cors")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.New("failed to send request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("status code :" + strconv.Itoa(resp.StatusCode))
+	}
+
+	return nil
 }
