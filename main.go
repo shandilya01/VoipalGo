@@ -27,11 +27,15 @@ func main() {
 	server := mux.NewRouter()
 
 	userHandler := handlers.NewUserHandler(db)
+	signallingHandler := handlers.NewSignallingHandler()
 
+	// creates multiple goroutines for each api call and each goroutines for each user
 	server.HandleFunc("/login", userHandler.HandleUserLogin).Methods("POST", "OPTIONS")
 	server.HandleFunc("/signup", userHandler.HandleUserSignUp).Methods("POST", "OPTIONS")
 	server.HandleFunc("/contactsbyid", userHandler.HandleContacts).Methods("GET", "OPTIONS")
 	server.HandleFunc("/pushCallNotification", userHandler.HandlePushNotification).Methods("GET", "POST", "OPTIONS")
+
+	server.HandleFunc("/ws", signallingHandler.HandleNewSocket)
 
 	log.Printf("Server listening on %s", cfg.ServerUrl)
 	if err := http.ListenAndServe(cfg.ServerUrl, server); err != nil {

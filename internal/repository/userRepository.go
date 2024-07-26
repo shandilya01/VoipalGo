@@ -11,6 +11,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+/*
+The pgxpool.Pool manages a pool of database connections, which allows multiple goroutines to query the database concurrently.
+The pool ensures that connections are reused efficiently and that there is a limit on the number of concurrent connections to the database.
+*/
+
 type UserRepository struct {
 	db *pgxpool.Pool
 }
@@ -29,12 +34,14 @@ func (r *UserRepository) CreateUser(ctx context.Context, password []byte, userOb
 	return err
 }
 
-func (r *UserRepository) FindUserById(ctx context.Context, userId int) *models.User {
+func (r *UserRepository) FindUserById(ctx context.Context, userId string) *models.User {
 	query := `select * from users where id = $1`
-	var userObj *models.User
-	err := r.db.QueryRow(ctx, query, userId).Scan(userObj)
+	rows, _ := r.db.Query(ctx, query, userId)
+	// defer rows.Close()
+	userObj, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByName[models.User])
+
 	if err != nil {
-		log.Print("find by user id error", err)
+		log.Print("find by userId err", err)
 		return nil
 	}
 	return userObj
@@ -44,9 +51,8 @@ func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) *mod
 	query := `select * from users where email = $1`
 	rows, _ := r.db.Query(ctx, query, email)
 	// defer rows.Close()
-	log.Print("rows", rows)
 	userObj, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByName[models.User])
-	log.Print("rows", userObj)
+
 	if err != nil {
 		log.Print("find by emailerrror", err)
 		return nil

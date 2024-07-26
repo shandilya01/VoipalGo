@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -11,28 +10,29 @@ import (
 )
 
 type UserHandler struct {
-	db *pgxpool.Pool
+	service *services.UserService
 }
 
 func NewUserHandler(db *pgxpool.Pool) *UserHandler {
-	return &UserHandler{db: db}
+	return &UserHandler{service: services.NewUserService(db)}
 }
 
 func (h *UserHandler) HandleUserLogin(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
 	var reqBody map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		http.Error(w, "Invalid Request Payload", http.StatusBadRequest)
+		return
+	}
 
-	json.NewDecoder(r.Body).Decode(&reqBody)
-
-	s := services.NewUserService(h.db)
-	userObj, err := s.UserLogin(ctx, reqBody)
+	userObj, err := h.service.UserLogin(ctx, reqBody)
 
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
@@ -45,19 +45,21 @@ func (h *UserHandler) HandleUserLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) HandleUserSignUp(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
 	var reqBody map[string]interface{}
-	json.NewDecoder(r.Body).Decode(&reqBody)
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		http.Error(w, "Invalid Request Payload", http.StatusBadRequest)
+		return
+	}
 
-	s := services.NewUserService(h.db)
-	userObj, err := s.UserSignUp(ctx, reqBody)
+	userObj, err := h.service.UserSignUp(ctx, reqBody)
 
 	log.Print(userObj)
 	log.Print(err)
@@ -73,10 +75,10 @@ func (h *UserHandler) HandleUserSignUp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) HandleContacts(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -85,8 +87,7 @@ func (h *UserHandler) HandleContacts(w http.ResponseWriter, r *http.Request) {
 		userId = r.URL.Query()["id"][0]
 	}
 
-	s := services.NewUserService(h.db)
-	contactsArr, err := s.GetUserContactsById(ctx, userId)
+	contactsArr, err := h.service.GetUserContactsById(ctx, userId)
 
 	log.Print(contactsArr)
 	log.Print(err)
@@ -102,10 +103,10 @@ func (h *UserHandler) HandleContacts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) HandlePushNotification(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -120,8 +121,12 @@ func (h *UserHandler) HandlePushNotification(w http.ResponseWriter, r *http.Requ
 		userId = r.URL.Query()["userId"][0]
 	}
 
-	s := services.NewUserService(h.db)
-	err := s.CallPushNotification(ctx, userId, peerId)
+	roomId := ""
+	if len(r.URL.Query()["roomId"]) > 0 {
+		roomId = r.URL.Query()["roomId"][0]
+	}
+
+	err := h.service.CallPushNotification(ctx, userId, peerId, roomId)
 
 	log.Print("HandlePushNotification", err)
 
