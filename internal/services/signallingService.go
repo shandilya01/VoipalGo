@@ -11,7 +11,7 @@ import (
 
 type SignallingService struct {
 	Upgrader *websocket.Upgrader
-	Clients  map[*websocket.Conn]bool
+	Clients  map[*websocket.Conn]string
 	Rooms    map[string]map[*websocket.Conn]bool
 	Mutex    sync.Mutex
 }
@@ -25,7 +25,7 @@ type Message struct {
 
 func NewSignallingService() *SignallingService {
 	return &SignallingService{
-		Clients: make(map[*websocket.Conn]bool),
+		Clients: make(map[*websocket.Conn]string),
 		Upgrader: &websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -47,12 +47,15 @@ func (s *SignallingService) HandleNewSocketConnection(w http.ResponseWriter, r *
 
 	log.Print("Client Connected")
 
-	s.Clients[ws] = true
+	s.Clients[ws] = "" // no room joined as of now thus empty string
 	log.Print("Active Clients", s.Clients)
+	log.Print("Active Clients in room", len(s.Rooms["123"]))
 	for {
 		var msg Message
 		err := ws.ReadJSON(&msg)
 		if err != nil {
+			// clear the room from the ws WARNING : might need a mutex lock in delete operation
+			delete(s.Rooms[s.Clients[ws]], ws)
 			delete(s.Clients, ws)
 			break
 		}
@@ -73,6 +76,7 @@ func (s *SignallingService) HandleNewSocketConnection(w http.ResponseWriter, r *
 
 	log.Print("Client Disconnected")
 	log.Print("Active Clients", s.Clients)
+	log.Print("Active Clients in room", len(s.Rooms["123"]))
 
 	return nil
 }
@@ -85,8 +89,7 @@ func (s *SignallingService) handleJoin(msg *Message, ws *websocket.Conn) {
 		s.Rooms[msg.RoomId] = room
 	}
 	room[ws] = true
-	log.Print("active rooms", len(s.Rooms[msg.RoomId]), len(room))
-	log.Print("curr room", msg.RoomId)
+	s.Clients[ws] = msg.RoomId
 	if len(room) == 1 {
 		ws.WriteJSON(Message{Event: "created"})
 	} else if len(room) == 2 {
@@ -121,7 +124,7 @@ func (s *SignallingService) broadcastToRoom(roomName string, msg Message, ignore
 		if client != ignore {
 			err := client.WriteJSON(msg)
 			if err != nil {
-				log.Print("broadcast error:", err)
+				log.Print("broadcast error for a client, closing connection:", err)
 				client.Close()
 				delete(s.Rooms[roomName], client)
 			}
