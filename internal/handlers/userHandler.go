@@ -137,3 +137,29 @@ func (h *UserHandler) HandlePushNotification(w http.ResponseWriter, r *http.Requ
 	}
 
 }
+
+func (h *UserHandler) HandleIncantation(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	userId := ""
+	if len(r.URL.Query()["userId"]) > 0 {
+		userId = r.URL.Query()["userId"][0]
+	}
+
+	inc, err := h.service.HandleIncantation(ctx, userId)
+
+	log.Print("HandleIncantation", err)
+
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(inc)
+	}
+}

@@ -33,6 +33,7 @@ func main() {
 	server.HandleFunc("/login", userHandler.HandleUserLogin).Methods("POST", "OPTIONS")
 	server.HandleFunc("/signup", userHandler.HandleUserSignUp).Methods("POST", "OPTIONS")
 	server.HandleFunc("/contactsbyid", userHandler.HandleContacts).Methods("GET", "OPTIONS")
+	server.HandleFunc("/refreshIncantation", userHandler.HandleIncantation).Methods("GET", "OPTIONS")
 	server.HandleFunc("/pushCallNotification", userHandler.HandlePushNotification).Methods("GET", "POST", "OPTIONS")
 
 	server.HandleFunc("/ws", signallingHandler.HandleNewSocket)

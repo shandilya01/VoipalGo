@@ -75,12 +75,14 @@ func SendPushNotfication(token string, title string, body string, data *PushNoti
 
 	payload, err := json.Marshal(message)
 	if err != nil {
+		log.Print("failed to marshal message")
 		return errors.New("failed to marshal message")
 	}
 	log.Print("payload generated", payload)
 
 	req, err := http.NewRequest("POST", expoPushURL, bytes.NewBuffer(payload))
 	if err != nil {
+		log.Print("failed to creare message")
 		return errors.New("failed to create request")
 	}
 
@@ -93,11 +95,13 @@ func SendPushNotfication(token string, title string, body string, data *PushNoti
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Print("failed to send exp")
 		return errors.New("failed to send request")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		log.Print("failed status")
 		return errors.New("status code :" + strconv.Itoa(resp.StatusCode))
 	}
 
@@ -125,8 +129,10 @@ func (s *UserService) UserLogin(ctx context.Context, reqBody map[string]interfac
 	}
 
 	// login success till now so update the pushToken
-
-	tokenError := s.repo.UpdatePushToken(ctx, stringUserObj["email"], stringUserObj["pushToken"])
+	var tokenError error
+	if stringUserObj["pushToken"] != "" {
+		tokenError = s.repo.UpdatePushToken(ctx, stringUserObj["email"], stringUserObj["pushToken"])
+	}
 
 	return userObj, tokenError
 }
@@ -187,4 +193,8 @@ func (s *UserService) CallPushNotification(ctx context.Context, userId string, p
 		RoomId:      roomId,
 	}
 	return SendPushNotfication(*peerToken, title, body, data, "voipalCall")
+}
+
+func (s *UserService) HandleIncantation(ctx context.Context, userId string) (string, error) {
+	return "new.random.incantation", nil
 }

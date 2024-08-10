@@ -53,6 +53,7 @@ func (s *SignallingService) HandleNewSocketConnection(w http.ResponseWriter, r *
 	for {
 		var msg Message
 		err := ws.ReadJSON(&msg)
+		log.Print("message", msg, err)
 		if err != nil {
 			// clear the room from the ws WARNING : might need a mutex lock in delete operation
 			delete(s.Rooms[s.Clients[ws]], ws)
@@ -100,18 +101,22 @@ func (s *SignallingService) handleJoin(msg *Message, ws *websocket.Conn) {
 }
 
 func (s *SignallingService) handleReady(ws *websocket.Conn, msg Message) {
+	log.Print("ready", msg)
 	s.broadcastToRoom(msg.RoomId, Message{Event: "ready"}, ws)
 }
 
 func (s *SignallingService) handleCandidate(ws *websocket.Conn, msg Message) {
+	log.Print("candidate", msg)
 	s.broadcastToRoom(msg.RoomId, Message{Event: "candidate", Data: msg.Data}, ws)
 }
 
 func (s *SignallingService) handleOffer(ws *websocket.Conn, msg Message) {
+	log.Print("offer", msg)
 	s.broadcastToRoom(msg.RoomId, Message{Event: "offer", Data: msg.Data}, ws)
 }
 
 func (s *SignallingService) handleAnswer(ws *websocket.Conn, msg Message) {
+	log.Print("answer", msg)
 	s.broadcastToRoom(msg.RoomId, Message{Event: "answer", Data: msg.Data}, ws)
 }
 
@@ -127,6 +132,8 @@ func (s *SignallingService) broadcastToRoom(roomName string, msg Message, ignore
 				log.Print("broadcast error for a client, closing connection:", err)
 				client.Close()
 				delete(s.Rooms[roomName], client)
+			} else {
+				log.Print("message sent")
 			}
 		}
 	}
