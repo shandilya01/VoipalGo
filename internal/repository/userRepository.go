@@ -20,16 +20,95 @@ type UserRepository struct {
 	db *pgxpool.Pool
 }
 
+type WordState struct {
+	I int
+	J int
+	K int
+}
+
 func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 	return &UserRepository{
 		db: db,
 	}
 }
 
+func updateWordState(state *WordState, count int) error {
+	if state.K != count {
+		state.K += 1
+		return nil
+	} else {
+		state.K = 1
+		if state.J != count {
+			state.J += 1
+			return nil
+		} else {
+			state.J = 1
+			if state.I != count {
+				state.I += 1
+				return nil
+			} else {
+				return errors.New("words exhausted")
+			}
+		}
+	}
+}
+
 func (r *UserRepository) CreateUser(ctx context.Context, password []byte, userObj map[string]string) error {
-	query := `insert into users (name, email, password, phoneNumber, incantation, pushToken) values ($1, $2, $3, $4, $5, $6)`
+	query := `select i,j,k from word_state`
+	rows, _ := r.db.Query(ctx, query)
+	wordState, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByName[WordState])
+	if err != nil {
+		return err
+	}
+	log.Print("i", wordState.I)
+
+	query = `select count(*) from words`
+	rows, _ = r.db.Query(ctx, query)
+	wordCount := 0
+	if rows.Next() {
+		rows.Scan(&wordCount)
+		log.Print("word count", wordCount)
+	}
+
+	query = `select word from words where id = $1`
+	rows, _ = r.db.Query(ctx, query, wordState.I)
+	word1 := ""
+	if rows.Next() {
+		rows.Scan(&word1)
+	}
+	rows, _ = r.db.Query(ctx, query, wordState.J)
+	word2 := ""
+	if rows.Next() {
+		rows.Scan(&word2)
+	}
+	rows, _ = r.db.Query(ctx, query, wordState.K)
+	word3 := ""
+	if rows.Next() {
+		rows.Scan(&word3)
+	}
+
+	err = updateWordState(wordState, wordCount)
+	if err != nil {
+		return err
+	}
+
+	query = `truncate word_state`
+	_, err = r.db.Exec(ctx, query)
+	if err != nil {
+		return err
+	}
+
+	query = `insert into word_state values (1,$1,$2,$3)`
+	_, err = r.db.Exec(ctx, query, wordState.I, wordState.J, wordState.K)
+	if err != nil {
+		return err
+	}
+
+	userObj["incantation"] = word1 + "." + word2 + "." + word3
+
+	query = `insert into users (name, email, password, phoneNumber, incantation, pushToken) values ($1, $2, $3, $4, $5, $6)`
 	log.Print("creating user")
-	_, err := r.db.Exec(ctx, query, userObj["name"], userObj["email"], password, userObj["phoneNumber"], userObj["incantation"], userObj["pushToken"])
+	_, err = r.db.Exec(ctx, query, userObj["name"], userObj["email"], password, userObj["phoneNumber"], userObj["incantation"], userObj["pushToken"])
 	log.Print("user creation error", err)
 	return err
 }
