@@ -104,11 +104,11 @@ func (r *UserRepository) CreateUser(ctx context.Context, password []byte, userOb
 		return err
 	}
 
-	userObj["incantation"] = word1 + "." + word2 + "." + word3
+	userObj["voipId"] = word1 + "." + word2 + "." + word3
 
-	query = `insert into users (name, email, password, phoneNumber, incantation, pushToken) values ($1, $2, $3, $4, $5, $6)`
+	query = `insert into users (name, email, password, phoneNumber, voipId, pushToken) values ($1, $2, $3, $4, $5, $6)`
 	log.Print("creating user")
-	_, err = r.db.Exec(ctx, query, userObj["name"], userObj["email"], password, userObj["phoneNumber"], userObj["incantation"], userObj["pushToken"])
+	_, err = r.db.Exec(ctx, query, userObj["name"], userObj["email"], password, userObj["phoneNumber"], userObj["voipId"], userObj["pushToken"])
 	log.Print("user creation error", err)
 	return err
 }
@@ -149,7 +149,7 @@ func (r *UserRepository) UpdatePushToken(ctx context.Context, email string, toke
 }
 
 func (r *UserRepository) GetContactsById(ctx context.Context, id string) []*models.Contact {
-	query := `select id, name, email, phonenumber, incantation from users where id != $1`
+	query := `select id, name, email, phonenumber, voipId from users where id != $1`
 	rows, _ := r.db.Query(ctx, query, id)
 	// defer rows.Close()
 	contactRows, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[models.Contact])
@@ -171,4 +171,29 @@ func (r *UserRepository) GetPushToken(ctx context.Context, id string) *string {
 	}
 	log.Print(token)
 	return &token
+}
+
+func (r *UserRepository) GetWordList(ctx context.Context) []string {
+	query := `select word from words`
+	rows, _ := r.db.Query(ctx, query)
+	// defer rows.Close()
+
+	wordList, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		log.Print("Could not get word list ", err)
+	}
+	return wordList
+}
+
+func (r *UserRepository) GetUserByVoipId(ctx context.Context, voipId string) *models.Contact {
+	query := `select id,name,email,phoneNumber,voipId from users where voipId = $1`
+	rows, _ := r.db.Query(ctx, query, voipId)
+	// defer rows.Close()
+	userObj, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByName[models.Contact])
+
+	if err != nil {
+		log.Print("find by voipId err", err)
+		return nil
+	}
+	return userObj
 }

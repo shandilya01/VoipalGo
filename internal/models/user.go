@@ -6,7 +6,7 @@ type User struct {
 	Email       string `json:"email"`
 	Password    []byte `json:"password"`
 	PhoneNumber string `json:"phoneNumber"`
-	Incantation string `json:"incantation"`
+	VoipId      string `json:"voipId"`
 	Active      bool   `json:"active"`
 	PushToken   string `json:"pushToken"`
 }

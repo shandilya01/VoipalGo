@@ -30,7 +30,7 @@ type PushNotificationData struct {
 	Name        string `json:"name"`
 	Email       string `json:"email"`
 	PhoneNumber string `json:"phoneNumber"`
-	Incantation string `json:"incantation"`
+	VoipId      string `json:"voipId"`
 	RoomId      string `json:"roomId"`
 }
 
@@ -139,7 +139,7 @@ func (s *UserService) UserLogin(ctx context.Context, reqBody map[string]interfac
 
 func (s *UserService) UserSignUp(ctx context.Context, reqBody map[string]interface{}) (*models.User, error) {
 
-	stringUserObj, err := ConvertInterfaceToString(reqBody, []string{"email", "password", "incantation", "phoneNumber", "pushToken", "name"})
+	stringUserObj, err := ConvertInterfaceToString(reqBody, []string{"email", "password", "voipId", "phoneNumber", "pushToken", "name"})
 	if err != nil {
 		return nil, err
 	}
@@ -189,12 +189,34 @@ func (s *UserService) CallPushNotification(ctx context.Context, userId string, p
 		Name:        userObj.Name,
 		Email:       userObj.Email,
 		PhoneNumber: userObj.PhoneNumber,
-		Incantation: userObj.Incantation,
+		VoipId:      userObj.VoipId,
 		RoomId:      roomId,
 	}
 	return SendPushNotfication(*peerToken, title, body, data, "voipalCall")
 }
 
-func (s *UserService) HandleIncantation(ctx context.Context, userId string) (string, error) {
-	return "new.random.incantation", nil
+func (s *UserService) HandleVoipId(ctx context.Context, userId string) (string, error) {
+	return "new.random.voipId", nil
+}
+
+func (s *UserService) HandleWordList(ctx context.Context) ([]string, error) {
+
+	wordList := s.repo.GetWordList(ctx)
+
+	if len(wordList) == 0 {
+		return nil, errors.New("could not get word list")
+	}
+
+	return wordList, nil
+}
+
+func (s *UserService) HandleUserByVoipId(ctx context.Context, voipId string) (*models.Contact, error) {
+
+	user := s.repo.GetUserByVoipId(ctx, voipId)
+
+	if user == nil {
+		return nil, errors.New("no user found for the voip id")
+	}
+
+	return user, nil
 }

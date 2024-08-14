@@ -138,7 +138,37 @@ func (h *UserHandler) HandlePushNotification(w http.ResponseWriter, r *http.Requ
 
 }
 
-func (h *UserHandler) HandleIncantation(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) HandleVoipId(w http.ResponseWriter, r *http.Request) {
+	// ctx := r.Context()
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// to be developed later
+	w.WriteHeader(http.StatusUnprocessableEntity)
+	///
+
+	// userId := ""
+	// if len(r.URL.Query()["userId"]) > 0 {
+	// 	userId = r.URL.Query()["userId"][0]
+	// }
+
+	// inc, err := h.service.HandleVoipId(ctx, userId)
+
+	// log.Print("HandleVoipId", err)
+
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusUnprocessableEntity)
+	// } else {
+	// 	w.WriteHeader(http.StatusOK)
+	// 	json.NewEncoder(w).Encode(inc)
+	// }
+}
+
+func (h *UserHandler) HandleWordList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -147,19 +177,40 @@ func (h *UserHandler) HandleIncantation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	userId := ""
-	if len(r.URL.Query()["userId"]) > 0 {
-		userId = r.URL.Query()["userId"][0]
-	}
+	wordList, err := h.service.HandleWordList(ctx)
 
-	inc, err := h.service.HandleIncantation(ctx, userId)
-
-	log.Print("HandleIncantation", err)
+	log.Print("HandleWordList error", err)
 
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(inc)
+		json.NewEncoder(w).Encode(wordList)
+	}
+}
+
+func (h *UserHandler) HandleUserByVoipId(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	voipId := ""
+	if len(r.URL.Query()["voipId"]) > 0 {
+		voipId = r.URL.Query()["voipId"][0]
+	}
+
+	user, err := h.service.HandleUserByVoipId(ctx, voipId)
+
+	log.Print("HandleUserByVoipId error", err)
+
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(user)
 	}
 }
