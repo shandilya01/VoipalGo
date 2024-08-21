@@ -1,4 +1,4 @@
-package services
+package handlers
 
 type SuccessResponse struct {
 	data       map[string]interface{}
@@ -7,8 +7,8 @@ type SuccessResponse struct {
 }
 
 type FailResponse struct {
-	success bool
-	message string
+	Success bool   `json:"success"`
+	Message string `json:"message"`
 }
 
 func NewSuccessResponse(data map[string]interface{}) *SuccessResponse {
@@ -21,7 +21,7 @@ func NewSuccessResponse(data map[string]interface{}) *SuccessResponse {
 
 func NewFailResponse(message string) *FailResponse {
 	return &FailResponse{
-		message: message,
-		success: false,
+		Message: message,
+		Success: false,
 	}
 }

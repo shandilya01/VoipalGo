@@ -36,7 +36,7 @@ func (h *UserHandler) HandleUserLogin(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(err)
+		json.NewEncoder(w).Encode(NewFailResponse(err.Error()))
 	} else {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(userObj)
